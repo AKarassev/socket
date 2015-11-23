@@ -14,6 +14,29 @@ typedef struct sockaddr_in 	sockaddr_in;
 typedef struct hostent 		hostent;
 typedef struct servent 		servent;
 
+
+/*________________________________________________________*/
+/*                                                        */
+/*-----------------METHODES DU CLIENT---------------------*/
+/*________________________________________________________*/
+
+//Le client est toujours en écoute des envois du serveur
+static void * ecoute (void * socket_descriptor){
+    int longueur;
+    int * socket = (int *) socket_descriptor;
+    char buffer[256];
+    while(1){
+        longueur = read(socket, buffer, (int)sizeof(buffer));
+        buffer[longueur]='\0';
+        printf("%s \n", buffer);
+    }
+}
+
+/*________________________________________________________*/
+/*--------------------------------------------------------*/
+
+
+
 int main(int argc, char **argv) {
   
     int     		socket_descriptor, 	/* descripteur de socket */
@@ -27,6 +50,7 @@ int main(int argc, char **argv) {
     char  			mesg[256]; 			/* message envoyé */
 
     char			pseudo[50];
+    pthread_t       thread_ecoute;      /*Thread sur lequel le client sera en écoute du serveur*/
     
     //renvoie une erreur s'il n'y a pas assez d'aguments
     /*if (argc != 3) {
@@ -124,17 +148,25 @@ int main(int argc, char **argv) {
     //Le client doit entrer son pseudo
     printf("Entrez votre pseudo: \n");
     fgets(pseudo, sizeof pseudo, stdin);
-    pseudo[strcspn(mesg, "\n")] = '\0'; //enlève le caractère de saut de ligne 
+    pseudo[strcspn(pseudo, "\n")] = '\0'; //enlève le caractère de saut de ligne 
     // scanf("%s", pseudo);
     if ((write(socket_descriptor, pseudo, strlen(pseudo))) < 0) {
             perror("erreur : impossible d'ecrire le message destine au serveur.");
             exit(1);
     }
+    printf("/q          - Quitter le serveur\n");
+    printf("/game       - Lancer le jeu\n");
+    printf("/endgame    - Arrêter le jeur\n");
+    printf("/h          - Afficher les commandes\n");
+    printf("__________________________\n\n");
+    printf("Bien le bonjour %s !\n", pseudo);
+
+    //Le client se met en écoute
+    pthread_create(&thread_ecoute, NULL, ecoute, socket_descriptor);
 
     //Le client peut désormais envoyer des messages au serveur
     //Il pourra quitter en écrivant la commande "/q" 
 	while(strcmp(mesg,"/q")!=0){
-		// printf("début\n");
         
         fgets(mesg, sizeof(mesg), stdin);
         //avec fgets() le caractere de saut de ligne '\n' est rajouté,
@@ -146,15 +178,6 @@ int main(int argc, char **argv) {
 			perror("erreur : impossible d'ecrire le message destine au serveur.");
 			exit(1);
     	}
-    	// printf("milieu \n");
-    	//Le client attend de recevoir le message pour retourner l'ACK
-    	//while((longueur = read(socket_descriptor, buffer, sizeof(buffer))) > 0) {
-		/*	longueur = read(socket_descriptor, buffer, (int)sizeof(buffer));
-			printf("reponse du serveur : \n");
-			write(1,buffer,longueur);*/
-    	// }
-
-    	// printf("fin\n");
 	}
 	printf("Vous quittez le chat.\n");
     printf("__________________________________________________\n\n");
@@ -180,14 +203,3 @@ int main(int argc, char **argv) {
     
 }
 
-//Traite la commande reçue par le serveur
-static void * commande (void * socket_descriptor){
-    int longueur;
-    int * socket_message = (int *) socket_descriptor;
-    char buffer[256];
-    while(1){
-        longueur = read(socket_message, buffer, (int)sizeof(buffer));
-        buffer[longueur]='\0';
-        printf("%s \n", buffer);
-    }
-}

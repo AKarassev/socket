@@ -29,39 +29,30 @@ Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients
 int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
 
 
+    /*______________________________________________________________________________________*/
+    /*                                                                                      */
+    /*--------------------------METHODES DU SERVEUR-----------------------------------------*/
+    /*______________________________________________________________________________________*/
 
-/*------------------------------------------------------*/
-//Renvoie le message reçu par le client
-void renvoi (int sock) {
-
-    char buffer[256];
+//Envoie le message du client à tous les clients du serveur
+void envoyer_message(Client * client, char buffer[]){
     char *answer = malloc (sizeof (*answer) * 256);
-    int longueur;
-   
-    if ((longueur = read(sock, buffer, sizeof(buffer))) <= 0) 
-    	return;
-    
-    printf("message lu : %s \n", buffer);
-    
-    answer[0] = 'R';
-    answer[1] = 'E';
-    answer[2] = '#';
-    answer = strcat(answer, buffer);
-    answer[longueur+4] ='\0';
-    
-    printf("message apres traitement : %s \n", answer);
-    
-    printf("renvoi du message traite.\n");
 
-    /* mise en attente du programme pour simuler un delai de transmission */
-    sleep(3);
-    
-    write(sock,answer,strlen(answer)+1);
-    free(answer);
-    printf("message envoye. \n");
+    strcpy(answer, (*client).pseudo);
+    strcat(answer,": ");
+    strcat(answer,buffer);
+    printf("Message à envoyer : %s\n", answer);
+    printf("De la part de : %s\n", (*client).pseudo);
+    int i;
+    for (i=0;i<nb_client;i++){
+        if(strcmp((*client).pseudo,arrClient[i].pseudo)!=0){
+            write(arrClient[i].sock,answer,strlen(answer)+1); 
+        }     
+    }    
+}
 
-    return;
-    
+void game(Client * client, char buffer[]){
+
 }
 
 
@@ -78,12 +69,9 @@ static void * commande (void * c){
 	int longueur;
 
     //Si le client n'a pas de pseudo
-    printf("Test taille pseudo %i\n", strlen((*client).pseudo)==0);
-    printf("el pseudo %s\n", (*client).pseudo);
     while(strlen((*client).pseudo)<=1){
         longueur = read((*client).sock, buffer, sizeof(buffer));
         buffer[longueur]='\0'; 
-        printf("Le pseudo %s\n", buffer);
         strcpy((*client).pseudo, buffer);
         write(1,buffer,longueur);
     }
@@ -95,17 +83,13 @@ static void * commande (void * c){
 
     	//Permet de vider le buffer des ancinnes données
         buffer[longueur]='\0';    	// explicit null termination: updated based on comments
-        // printf("%s\n",buffer); 		// print the current receive buffer with a newline
-        // fflush(stdout);         	// make sure everything makes it to the output
-        // buffer[0]='\0';
-
-    	printf("message lu : %s \n", buffer);
 
     	sleep(3);
     	//Si le buffer contient la commande de sortie
     	if(strcmp(buffer,"/q")==0){
-            printf("Le client quitte le chat.\n");
-            answer = "Au revoir!\n";
+            strcpy(answer, (*client).pseudo);
+            strcat(answer," a quitté le serveur.\n");
+            printf("%s\n", answer);
             write((*client).sock,answer,strlen(answer)+1);
             pthread_exit(NULL);
     	}
@@ -113,17 +97,9 @@ static void * commande (void * c){
     	/*else if (strcmp(buffer,"/game")==0{
             //jeux();
         }*/
-        //Cas du message normale
+        //Cas d'un message normale
         else if(longueur > 0){
-            printf("renvoi\n");
-            strcpy(answer, (*client).pseudo);
-            strcat(answer,": ");
-            strcat(answer,buffer);
-            strcat(answer,"\n");
-            int i;
-            for (i=0;i<nb_client;i++){
-               write(arrClient[i].sock,answer,strlen(answer)+1); 
-            }	
+            envoyer_message(client, buffer);	
     	}
 
 
@@ -133,6 +109,9 @@ static void * commande (void * c){
     return;
 
 }
+
+
+
 
     /*______________________________________________________________________________________*/
     /*______________________________________________________________________________________*/
@@ -158,6 +137,8 @@ main(int argc, char **argv) {
     servent*		ptr_service; 				/* les infos recuperees sur le service de la machine */
     char 			machine[TAILLE_MAX_NOM+1]; 	/* nom de la machine locale */
 
+    pthread_t       thread_game;                /* thread du jeu*/
+
 
     
     
@@ -181,22 +162,10 @@ main(int argc, char **argv) {
     adresse_locale.sin_family		= ptr_hote->h_addrtype; 	/* ou AF_INET */
     adresse_locale.sin_addr.s_addr	= INADDR_ANY; 			/* ou AF_INET */
 
-    /* 2 facons de definir le service que l'on va utiliser a distance */
-    /* (commenter l'une ou l'autre des solutions) */
-    
-    /*-----------------------------------------------------------*/
-    /* SOLUTION 1 : utiliser un service existant, par ex. "irc" */
-    /*
-    if ((ptr_service = getservbyname("irc","tcp")) == NULL) {
-		perror("erreur : impossible de recuperer le numero de port du service desire.");
-		exit(1);
-    }
-    adresse_locale.sin_port = htons(ptr_service->s_port);
-    */
-    /*-----------------------------------------------------------*/
-    /* SOLUTION 2 : utiliser un nouveau numero de port */
+
+    /*utiliser un nouveau numero de port */
     adresse_locale.sin_port = htons(5000);
-    /*-----------------------------------------------------------*/
+    /*-----------------------------------*/
     
     printf("numero de port pour la connexion au serveur : %d \n", 
 		   ntohs(adresse_locale.sin_port) /*ntohs(ptr_service->s_port)*/);
