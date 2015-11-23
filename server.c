@@ -25,8 +25,8 @@ typedef struct{
 } Client;
 
 
-
-
+Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients*/
+int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
 
 
 
@@ -109,10 +109,21 @@ static void * commande (void * c){
             write((*client).sock,answer,strlen(answer)+1);
             pthread_exit(NULL);
     	}
-    	else if(longueur > 0){
-    		printf("renvoi\n");
-    		answer = "Roger 5 sur 5 \n";
-    		write((*client).sock,answer,strlen(answer)+1);
+        //lancement du jeu
+    	/*else if (strcmp(buffer,"/game")==0{
+            //jeux();
+        }*/
+        //Cas du message normale
+        else if(longueur > 0){
+            printf("renvoi\n");
+            strcpy(answer, (*client).pseudo);
+            strcat(answer,": ");
+            strcat(answer,buffer);
+            strcat(answer,"\n");
+            int i;
+            for (i=0;i<nb_client;i++){
+               write(arrClient[i].sock,answer,strlen(answer)+1); 
+            }	
     	}
 
 
@@ -148,8 +159,8 @@ main(int argc, char **argv) {
     char 			machine[TAILLE_MAX_NOM+1]; 	/* nom de la machine locale */
 
 
-    Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients*/
-    int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
+    
+    
 
 
 

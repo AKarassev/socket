@@ -122,8 +122,9 @@ int main(int argc, char **argv) {
 	printf("__________________________________________________\n\n");
     
     //Le client doit entrer son pseudo
-    printf("Entrez cotre pseudo: \n");
+    printf("Entrez votre pseudo: \n");
     fgets(pseudo, sizeof pseudo, stdin);
+    pseudo[strcspn(mesg, "\n")] = '\0'; //enlève le caractère de saut de ligne 
     // scanf("%s", pseudo);
     if ((write(socket_descriptor, pseudo, strlen(pseudo))) < 0) {
             perror("erreur : impossible d'ecrire le message destine au serveur.");
@@ -147,10 +148,10 @@ int main(int argc, char **argv) {
     	}
     	// printf("milieu \n");
     	//Le client attend de recevoir le message pour retourner l'ACK
-    	// while((longueur = read(socket_descriptor, buffer, sizeof(buffer))) > 0) {
-			longueur = read(socket_descriptor, buffer, (int)sizeof(buffer));
+    	//while((longueur = read(socket_descriptor, buffer, sizeof(buffer))) > 0) {
+		/*	longueur = read(socket_descriptor, buffer, (int)sizeof(buffer));
 			printf("reponse du serveur : \n");
-			write(1,buffer,longueur);
+			write(1,buffer,longueur);*/
     	// }
 
     	// printf("fin\n");
@@ -177,4 +178,16 @@ int main(int argc, char **argv) {
 
     exit(0);
     
+}
+
+//Traite la commande reçue par le serveur
+static void * commande (void * socket_descriptor){
+    int longueur;
+    int * socket_message = (int *) socket_descriptor;
+    char buffer[256];
+    while(1){
+        longueur = read(socket_message, buffer, (int)sizeof(buffer));
+        buffer[longueur]='\0';
+        printf("%s \n", buffer);
+    }
 }
