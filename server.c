@@ -44,7 +44,7 @@ void envoyer_message(Client * client, char buffer[]){
     strcpy(answer, (*client).pseudo);
     strcat(answer,": ");
     strcat(answer,buffer);
-    printf("Message à envoyer : %s\n", answer);
+    printf("%s\n", answer);
     int i;
     for (i=0;i<nb_client;i++){
         if(strcmp((*client).pseudo,arrClient[i].pseudo)!=0){
@@ -99,7 +99,50 @@ void coloriser(char* answer, char choix){
     strcat(res, originale);
 
     strcpy(answer, res);
-    printf("Test de coloriser %s\n", answer);
+}
+
+
+static void * game (void * c){
+
+	return;
+}
+
+//Supprime un clients= de la liste des clients connectés
+void supprimerUtilisateur(Client *client_supprime){
+	Client copyArray[NB_CLIENTS_MAX];
+	int i,j = 0;
+	int tmp_nb_client = nb_client;
+
+	for(i; i<tmp_nb_client; i++){
+		if(arrClient[i].sock != (*client_supprime).sock){
+			printf("On ajoute %s\n", arrClient[i].pseudo);
+			copyArray[j] = arrClient[i];
+			j++;
+		}
+		else{
+			printf("On supprime %s\n", arrClient[i].pseudo);
+			close(arrClient[i].sock);
+			nb_client--;
+		}
+	}
+	// printf("test supprimerUtilisateur copyArray %i\n", copyArray[0].sock);
+
+	memcpy(arrClient, copyArray, sizeof(arrClient));
+
+	// printf("test supprimerUtilisateur arrClient %i\n", arrClient[0].sock);
+}
+
+//Liste tous les clients connectés dans une chaîne de caractère
+char* listeClient(){
+	char* res = malloc(nb_client*50*sizeof(char));
+	strcpy(res,"Liste des clients connectés:");
+	int i = 0;
+	for(i; i<nb_client; i++){
+		strcat(res, "\n-");
+		strcat(res, arrClient[i].pseudo);
+	}
+
+	return res;
 }
 
 
@@ -133,15 +176,23 @@ static void * commande (void * c){
         buffer[longueur]='\0';    	// explicit null termination: updated based on comments
 
     	sleep(3);
-    	//Si le buffer contient la commande de sortie
+    	// Quitter le serveur
     	if(strcmp(buffer,"/q")==0){
+    		printf("%s a entré la commande /q\n", (*client).pseudo);
             strcpy(answer, (*client).pseudo);
             strcat(answer," a quitté le serveur.\n");
-            printf("%s\n", answer);
            	coloriser(answer, 'm');
            	envoyer_message(client, answer);
-            // write((*client).sock,answer,strlen(answer)+1);
+           	supprimerUtilisateur(client);
+           	// free(client);  ERROR: free(): invalid pointer: 0x0000000000603180 ***
             pthread_exit(NULL);
+    	}
+    	// Lister les utilisateurs connectés
+    	else if(strcmp(buffer,"/l")==0){
+    		printf("%s a entre la commande /l\n", (*client).pseudo);
+    		strcpy(answer, listeClient());
+    		coloriser(answer, 'm');
+    		write((*client).sock,answer,strlen(answer)+1); 
     	}
         //lancement du jeu
     	/*else if (strcmp(buffer,"/game")==0{
@@ -192,9 +243,6 @@ main(int argc, char **argv) {
 
     
     
-
-
-
 
 
     gethostname(machine,TAILLE_MAX_NOM);		/* recuperation du nom de la machine */
@@ -259,9 +307,6 @@ main(int argc, char **argv) {
 					perror("erreur : le serveur est saturé");
 					exit(1);
 		}
-
-
-
         else{
             //si le client n'est pas encore connecté
             if(arrClient[nb_client].connected == 0){

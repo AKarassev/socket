@@ -155,6 +155,7 @@ int main(int argc, char **argv) {
             exit(1);
     }
     printf("/q          - Quitter le serveur\n");
+    printf("/l          - Lister les utilisateurs connectés\n");
     printf("/game       - Lancer le jeu\n");
     printf("/endgame    - Arrêter le jeur\n");
     printf("/h          - Afficher les commandes\n");
