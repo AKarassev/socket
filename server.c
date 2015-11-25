@@ -8,8 +8,10 @@ Serveur à lancer avant le client
 #include <netdb.h> 		/* pour hostent, servent */
 #include <string.h> 		/* pour bcopy, ... */  
 #include <pthread.h> 
-#define TAILLE_MAX_NOM 256
-#define NB_CLIENTS_MAX 42
+
+#define TAILLE_MAX_NOM      256
+#define NB_CLIENTS_MAX      42
+
 
 typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
@@ -25,6 +27,7 @@ typedef struct{
 } Client;
 
 
+//Variables globales pour pouvoir être récupérées depuis les threads
 Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients*/
 int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
 
@@ -42,7 +45,6 @@ void envoyer_message(Client * client, char buffer[]){
     strcat(answer,": ");
     strcat(answer,buffer);
     printf("Message à envoyer : %s\n", answer);
-    printf("De la part de : %s\n", (*client).pseudo);
     int i;
     for (i=0;i<nb_client;i++){
         if(strcmp((*client).pseudo,arrClient[i].pseudo)!=0){
@@ -51,9 +53,55 @@ void envoyer_message(Client * client, char buffer[]){
     }    
 }
 
-void game(Client * client, char buffer[]){
+//Change la couleur d'une chaîne de caractere
+void coloriser(char* answer, char choix){
 
+    char originale[10]  = "\x1B[0m" ;
+    char rouge[10]      = "\x1B[31m";
+    char vert[10]       = "\x1B[32m";
+    char jaune[10]      = "\x1B[33m";
+    char bleu[10]       = "\x1B[34m";
+    char magenta[10]    = "\x1B[35m";
+    char cyan[10] 		= "\x1B[36m";
+
+    char couleur[10];
+
+    switch(choix) {
+        case 'o' :
+            strcpy(couleur, originale);
+            break;
+        case 'r' :
+            strcpy(couleur, rouge);
+            break;
+        case 'v' :
+            strcpy(couleur, vert);
+            break;
+        case 'j' :
+            strcpy(couleur, jaune);
+            break;
+        case 'b' :
+            strcpy(couleur, bleu);
+            break;
+        case 'm' :
+            strcpy(couleur, magenta);
+            break;
+        case 'c' :
+            strcpy(couleur, cyan);
+            break;                                                      
+        default :
+            printf("Choix de couleur invalide\n" );
+    }
+
+
+    char *res = malloc (sizeof (*res) * 256);
+    strcpy(res, couleur);
+    strcat(res, answer);
+    strcat(res, originale);
+
+    strcpy(answer, res);
+    printf("Test de coloriser %s\n", answer);
 }
+
 
 
     /*______________________________________________________________________________________*/
@@ -90,7 +138,9 @@ static void * commande (void * c){
             strcpy(answer, (*client).pseudo);
             strcat(answer," a quitté le serveur.\n");
             printf("%s\n", answer);
-            write((*client).sock,answer,strlen(answer)+1);
+           	coloriser(answer, 'm');
+           	envoyer_message(client, answer);
+            // write((*client).sock,answer,strlen(answer)+1);
             pthread_exit(NULL);
     	}
         //lancement du jeu
