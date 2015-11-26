@@ -8,6 +8,7 @@ Serveur à lancer avant le client
 #include <netdb.h> 		/* pour hostent, servent */
 #include <string.h> 		/* pour bcopy, ... */  
 #include <pthread.h> 
+#include <stdlib.h>         /*pour le random*/
 
 #define TAILLE_MAX_NOM      256
 #define NB_CLIENTS_MAX      42
@@ -17,6 +18,13 @@ typedef struct sockaddr sockaddr;
 typedef struct sockaddr_in sockaddr_in;
 typedef struct hostent hostent;
 typedef struct servent servent;
+
+//Strucutre qui définit le type utilisé pour le jeu
+typedef struct
+{
+    char question[200];     /*Question*/
+    char reponse[200];      /*Réponse*/
+}quest_rep;
 
 //Structure qui définit un client du serveur
 typedef struct{
@@ -111,8 +119,66 @@ void coloriser(char* answer, char choix){
 
 
 static void * game (void * c){
+    Client * client = (Client *) c;
+    quest_rep questionnaire[10];
+    quest_rep Question;
+    int random;
+    //Faire l'affichage réponse : /a:réponse
+    random=rand()%(10-0) +0;
+    //Afficher la première question
+    Question.question="2+3";
+    Question.reponse="5";
+    questionnaire[0]=Question;
+    Question.question="Capital de la France";
+    Question.reponse="Paris";
+    questionnaire[1]=Question;
+    Question.question="Qui joue L'empereur dans Gladiator";
+    Question.reponse="Joaquim Phoenix";
+    questionnaire[2]=Question;
+    Question.question="Quel est la nationalité de Charles Darwin";
+    Question.reponse="Anglaise";
+    questionnaire[3]=Question;
+    Question.question="Le prénom d'Alzeihmer";
+    Question.reponse="Alois";
+    questionnaire[4]=Question;
+    Question.question="10*5-32";
+    Question.reponse="18";
+    questionnaire[5]=Question;
+    Question.question="Quel est la Nationalité de Mario";
+    Question.reponse="Italien";
+    questionnaire[6]=Question;
+    Question.question="Qui a écrit Le Petit Prince";
+    Question.reponse="Antoine de Saint-Exupéry";
+    questionnaire[7]=Question;
+    Question.question="Quel est la nationalité du Baron Rouge";
+    Question.reponse="Allemand";
+    questionnaire[8]=Question;
+    Question.question="Qui a tué Achille pendant le siège de Troie";
+    Question.reponse="Pâris";
+    questionnaire[9]=Question;
+    printf("Bienvenue dans le jeu\n");
+    while(1){
+        char buffer[256];
+        char *answer = malloc (sizeof (*answer) * 256);
+        int longueur;
+        int in_game=0;
+        longueur = read((*client).sock, buffer, sizeof(buffer));
 
-	return;
+        //Permet de vider le buffer des ancinnes données
+        buffer[longueur]='\0';      // explicit null termination: updated based on comments
+
+        sleep(3);
+
+        if(longueur > 0){
+            envoyer_message(client, buffer);
+            if  (strcmp(buffer,strcat("/a:",questionnaire[random])==0){
+                printf("Bonne réponse\n");
+                random=rand()%(10-0) +0;
+                //Afficher la question
+            }
+        }
+    }
+    return;
 }
 
 //Liste tous les clients connectés dans une chaîne de caractère
@@ -230,6 +296,9 @@ static void * commande (void * c){
 	char buffer[256];
 	char *answer = malloc (sizeof (*answer) * 256);
 	int longueur;
+    int in_game;
+
+    in_game=0;
 
     //Si le client n'a pas de pseudo
     while(strlen((*client).pseudo)<=1){
@@ -272,9 +341,14 @@ static void * commande (void * c){
             write((*client).sock,answer,strlen(answer)+1);  
         }
         //lancement du jeu
-    	/*else if (strcmp(buffer,"/game")==0{
-            //jeux();
-        }*/
+        else if (strcmp(buffer,"/game")==0){
+            if (in_game=0){
+                game;
+                in_game=1;}
+            else {
+                printf("%d\n", in_game);
+                printf("%s a voulu entre en mode jeu\n", (*client).pseudo);}
+        }
         //Cas d'un message normale
         else if(longueur > 0){
             envoyer_message(client, buffer);	
