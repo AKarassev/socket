@@ -26,7 +26,8 @@ static void * ecoute (void * socket_descriptor){
     int * socket = (int *) socket_descriptor;
     char buffer[256];
     while(1){
-        longueur = read(socket, buffer, (int)sizeof(buffer));
+        if((longueur = read(socket, buffer, (int)sizeof(buffer)))<=0)
+            exit(1);
         buffer[longueur]='\0';
         printf("%s \n", buffer);
     }
@@ -154,6 +155,8 @@ int main(int argc, char **argv) {
             perror("erreur : impossible d'ecrire le message destine au serveur.");
             exit(1);
     }
+    printf("__________________________\n");
+    printf("                          \n");
     printf("/q          - Quitter le serveur\n");
     printf("/l          - Lister les utilisateurs connectés\n");
     printf("/game       - Lancer le jeu\n");

@@ -32,15 +32,23 @@ Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients
 int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
 
 
+
+
+
+
+
+
     /*______________________________________________________________________________________*/
     /*                                                                                      */
     /*--------------------------METHODES DU SERVEUR-----------------------------------------*/
     /*______________________________________________________________________________________*/
 
+
+
+
 //Envoie le message du client à tous les clients du serveur
 void envoyer_message(Client * client, char buffer[]){
     char *answer = malloc (sizeof (*answer) * 256);
-
     strcpy(answer, (*client).pseudo);
     strcat(answer,": ");
     strcat(answer,buffer);
@@ -107,43 +115,107 @@ static void * game (void * c){
 	return;
 }
 
-//Supprime un clients= de la liste des clients connectés
-void supprimerUtilisateur(Client *client_supprime){
-	Client copyArray[NB_CLIENTS_MAX];
-	int i,j = 0;
-	int tmp_nb_client = nb_client;
-
-	for(i; i<tmp_nb_client; i++){
-		if(arrClient[i].sock != (*client_supprime).sock){
-			printf("On ajoute %s\n", arrClient[i].pseudo);
-			copyArray[j] = arrClient[i];
-			j++;
-		}
-		else{
-			printf("On supprime %s\n", arrClient[i].pseudo);
-			close(arrClient[i].sock);
-			nb_client--;
-		}
-	}
-	// printf("test supprimerUtilisateur copyArray %i\n", copyArray[0].sock);
-
-	memcpy(arrClient, copyArray, sizeof(arrClient));
-
-	// printf("test supprimerUtilisateur arrClient %i\n", arrClient[0].sock);
-}
-
 //Liste tous les clients connectés dans une chaîne de caractère
 char* listeClient(){
-	char* res = malloc(nb_client*50*sizeof(char));
-	strcpy(res,"Liste des clients connectés:");
-	int i = 0;
-	for(i; i<nb_client; i++){
-		strcat(res, "\n-");
-		strcat(res, arrClient[i].pseudo);
-	}
+    char* res = malloc(nb_client*50*sizeof(char));
+    strcpy(res,"Liste des clients connectés:");
+    int i = 0;
+    for(i; i<nb_client; i++){
+        strcat(res, "\n-");
+        strcat(res, arrClient[i].pseudo);
+    }
 
-	return res;
+    return res;
 }
+
+
+
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*--------------------------------------------------------------------------------------*/ 
+
+
+
+
+
+
+
+
+    /*______________________________________________________________________________________*/
+    /*                                                                                      */
+    /*--------------------------METHODES ADMIN ---------------------------------------------*/
+    /*______________________________________________________________________________________*/
+
+
+
+//Vérifie le statut de la connection des clients connectés
+void checkSocketStatus(){
+    int error = 0;
+    socklen_t len = sizeof (error);
+    int retval;
+
+    int i = 0;
+    for(i; i<nb_client; i++){
+        printf("\nUtilisateur %i\n", i);
+        printf("Pseudo: %s\n", arrClient[i].pseudo);
+        retval = getsockopt (arrClient[i].sock, SOL_SOCKET, SO_ERROR, &error, &len);
+        if (retval != 0) {
+        /* there was a problem getting the error code */
+            fprintf(stderr, "error getting socket error code: %s\n", strerror(retval));
+            return;
+        }
+        if (error != 0) {
+            /* socket has a non zero error status */
+            fprintf(stderr, "socket error: %s\n\n", strerror(error));
+        }
+        else{
+            printf("La connection est OK.\n\n");
+        }       
+    }
+}
+
+
+
+//Affiche les informations relatives au clients connectés
+void listerInfo(){
+    int i = 0;
+    for(i; i<nb_client; i++){
+        printf("\nUtilisateur %i\n", i);
+        printf("Pseudo: %s\n", arrClient[i].pseudo);
+        printf("Socket: %i\n", arrClient[i].sock);
+        printf("Connecté: %i\n\n", arrClient[i].connected);
+    }
+}
+
+
+
+//Supprime un clients= de la liste des clients connectés
+void supprimerUtilisateur(Client *client_supprime){
+    Client copyArray[NB_CLIENTS_MAX];
+    int i,j = 0;
+    int tmp_nb_client = nb_client;
+    for(i; i<tmp_nb_client; i++){
+        if(arrClient[i].sock != (*client_supprime).sock){
+            printf("On ajoute %s\n", arrClient[i].pseudo);
+            copyArray[j] = arrClient[i];
+            j++;
+        }
+        else{
+            printf("On supprime %s\n", arrClient[i].pseudo);
+            close(arrClient[i].sock);
+            nb_client--;
+        }
+    }
+
+    memcpy(arrClient, copyArray, sizeof(arrClient));
+}
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*--------------------------------------------------------------------------------------*/ 
+
+
+
+
 
 
 
@@ -152,7 +224,7 @@ char* listeClient(){
     /*--------------------------TRAITEMENT DES COMMANDES------------------------------------*/
     /*______________________________________________________________________________________*/
 
-//Traite la commande reçue par le client
+//Traite les commandes reçues par le client
 static void * commande (void * c){
     Client * client = (Client *) c;
 	char buffer[256];
@@ -169,7 +241,6 @@ static void * commande (void * c){
 	
 	
     while(1){
-
     	longueur = read((*client).sock, buffer, sizeof(buffer));
 
     	//Permet de vider le buffer des ancinnes données
@@ -191,9 +262,15 @@ static void * commande (void * c){
     	else if(strcmp(buffer,"/l")==0){
     		printf("%s a entre la commande /l\n", (*client).pseudo);
     		strcpy(answer, listeClient());
-    		coloriser(answer, 'm');
+    		coloriser(answer, 'v');
     		write((*client).sock,answer,strlen(answer)+1); 
     	}
+        else if(strcmp(buffer,"/h")==0){
+            printf("%s a entre la commande /h\n", (*client).pseudo);
+            strcpy(answer, "__________________________\n                          \n/q          - Quitter le serveur\n/l          - Lister les utilisateurs connectés\n/game       - Lancer le jeu\n/endgame    - Arrêter le jeur\n/h          - Afficher les commandes\n__________________________\n\n");
+            coloriser(answer, 'v');
+            write((*client).sock,answer,strlen(answer)+1);  
+        }
         //lancement du jeu
     	/*else if (strcmp(buffer,"/game")==0{
             //jeux();
@@ -214,6 +291,44 @@ static void * commande (void * c){
 
 
 
+//Un thread qui surveille les commandes faites sur le serveur
+static void * commandeServeur (void * socket_serveur){
+    char* cmd = malloc(16*sizeof(char));
+    char* mesg = malloc(256*sizeof(*mesg));
+    while(1){
+        fgets(cmd, sizeof(cmd), stdin);
+        cmd[strcspn(cmd, "\n")] = '\0'; //enlève le caractère de saut de ligne 
+        if(strcmp(cmd,"/q")==0){
+            printf("/q entrée\n");
+            strcpy(mesg, "Arrêt du serveur, connection interrompue.");
+            printf("before coloriser %s\n", mesg);
+            coloriser(mesg, 'r');
+            int i = 0;
+
+            for(i; i<nb_client; i++){
+                write(arrClient[i].sock,mesg,strlen(mesg)+1);
+                close(arrClient[i].sock); //fermeture du socket du client
+            } 
+            close(socket_serveur) ; //fermeture du socket serveur
+            printf("Arrêt du serveur\n");
+            exit(0);          
+        }
+        else if(strcmp(cmd,"/cs")==0){
+            printf("/cs entrée\n");
+            checkSocketStatus();
+        }
+        else if(strcmp(cmd,"/l")==0){
+            strcpy(mesg, listeClient());
+            coloriser(mesg, 'j');
+            printf("%s\n", mesg);
+        }
+    }
+
+}
+
+
+
+
     /*______________________________________________________________________________________*/
     /*______________________________________________________________________________________*/
     /*--------------------------------------------------------------------------------------*/ 
@@ -225,8 +340,15 @@ static void * commande (void * c){
 
 
 
+    /*______________________________________________________________________________________*/
+    /*                                                                                      */
+    /*------------------------------------MAIN----------------------------------------------*/
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*--------------------------------------------------------------------------------------*/ 
 
-/*------------------------------------------------------*/
+
 main(int argc, char **argv) {
   
     int             socket_descriptor, 			/* descripteur de socket */
@@ -239,6 +361,7 @@ main(int argc, char **argv) {
     char 			machine[TAILLE_MAX_NOM+1]; 	/* nom de la machine locale */
 
     pthread_t       thread_game;                /* thread du jeu*/
+    pthread_t       thread_cmd;                 /* thread des commandes du serveur */
 
 
     
@@ -296,6 +419,9 @@ main(int argc, char **argv) {
     /* initialisation de la file d'ecoute */
     listen(socket_descriptor,5);
 
+    //Thread permettant de lancer des commandes dans le temrinal
+    pthread_create(&thread_cmd, NULL, commandeServeur, &socket_descriptor);
+
     /* attente des connexions et traitement des donnees recues */
     while(1) {
     
@@ -335,3 +461,10 @@ main(int argc, char **argv) {
 
     
 }
+
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*--------------------------------------------------------------------------------------*/ 
+    /*______________________________________________________________________________________*/
+    /*______________________________________________________________________________________*/
+    /*--------------------------------------------------------------------------------------*/ 
