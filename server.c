@@ -40,6 +40,8 @@ Client arrClient[NB_CLIENTS_MAX];           /*Tableau contenant tous les clients
 int nb_client = 0;                          /*Nombre de clients connectés au serveur*/
 
 
+int in_game;                                /*Booléen pour savoir si le jeu est lancé*/
+Client * maitre_jeu;                        /*Mémoire de celui qui a démarré le jeu*/
 
 
 
@@ -66,6 +68,17 @@ void envoyer_message(Client * client, char buffer[]){
         if(strcmp((*client).pseudo,arrClient[i].pseudo)!=0){
             write(arrClient[i].sock,answer,strlen(answer)+1); 
         }     
+    }    
+}
+
+//Envoie un message à tous les clients du serveur de la part du serveur
+void message_serv(char buffer[]){
+    char *answer = malloc (sizeof (*answer) * 256);
+    strcat(answer,buffer);
+    printf("%s\n", answer);
+    int i;
+    for (i=0;i<nb_client;i++){
+            write(arrClient[i].sock,answer,strlen(answer)+1); 
     }    
 }
 
@@ -123,40 +136,42 @@ static void * game (void * c){
     quest_rep questionnaire[10];
     quest_rep Question;
     int random;
+    char * rep; 
     //Faire l'affichage réponse : /a:réponse
+    message_serv("Pour répondre fairte /a:laréponse");
     random=rand()%(10-0) +0;
-    //Afficher la première question
-    Question.question="2+3";
-    Question.reponse="5";
+    strcpy(Question.question,"2+3");
+    strcpy(Question.reponse,"5");
     questionnaire[0]=Question;
-    Question.question="Capital de la France";
-    Question.reponse="Paris";
+    strcpy(Question.question,"Capital de la France");
+    strcpy(Question.reponse,"Paris");
     questionnaire[1]=Question;
-    Question.question="Qui joue L'empereur dans Gladiator";
-    Question.reponse="Joaquim Phoenix";
+    strcpy(Question.question,"Qui joue L'empereur dans Gladiator");
+    strcpy(Question.reponse,"Joaquim Phoenix");
     questionnaire[2]=Question;
-    Question.question="Quel est la nationalité de Charles Darwin";
-    Question.reponse="Anglaise";
+    strcpy(Question.question,"Quel est la nationalité de Charles Darwin");
+    strcpy(Question.reponse,"Anglaise");
     questionnaire[3]=Question;
-    Question.question="Le prénom d'Alzeihmer";
-    Question.reponse="Alois";
+    strcpy(Question.question,"Le prénom d'Alzeihmer");
+    strcpy(Question.reponse,"Alois");
     questionnaire[4]=Question;
-    Question.question="10*5-32";
-    Question.reponse="18";
+    strcpy(Question.question,"10*5-32");
+    strcpy(Question.reponse,"18");
     questionnaire[5]=Question;
-    Question.question="Quel est la Nationalité de Mario";
-    Question.reponse="Italien";
+    strcpy(Question.question,"Quel est la Nationalité de Mario");
+    strcpy(Question.reponse,"Italien");
     questionnaire[6]=Question;
-    Question.question="Qui a écrit Le Petit Prince";
-    Question.reponse="Antoine de Saint-Exupéry";
+    strcpy(Question.question,"Qui a écrit Le Petit Prince");
+    strcpy(Question.reponse,"Antoine de Saint-Exupéry");
     questionnaire[7]=Question;
-    Question.question="Quel est la nationalité du Baron Rouge";
-    Question.reponse="Allemand";
+    strcpy(Question.question,"Quel est la nationalité du Baron Rouge");
+    strcpy(Question.reponse,"Allemand");
     questionnaire[8]=Question;
-    Question.question="Qui a tué Achille pendant le siège de Troie";
-    Question.reponse="Pâris";
+    strcpy(Question.question,"Qui a tué Achille pendant le siège de Troie");
+    strcpy(Question.reponse,"Pâris");
     questionnaire[9]=Question;
-    printf("Bienvenue dans le jeu\n");
+    //Afficher la première question
+    message_serv(questionnaire[random].question);
     while(1){
         char buffer[256];
         char *answer = malloc (sizeof (*answer) * 256);
@@ -168,13 +183,17 @@ static void * game (void * c){
         buffer[longueur]='\0';      // explicit null termination: updated based on comments
 
         sleep(3);
-
+        rep = malloc (256*sizeof(char));
+        strcpy(rep,"/a:");
+        strcat(rep,questionnaire[random].reponse);
         if(longueur > 0){
             envoyer_message(client, buffer);
-            if  (strcmp(buffer,strcat("/a:",questionnaire[random])==0){
-                printf("Bonne réponse\n");
+            if  (strcmp(buffer,rep)==0){
+                //Afficher Bonne réponse
+                message_serv("Bonne réponse");
                 random=rand()%(10-0) +0;
                 //Afficher la question
+                message_serv(questionnaire[random].question);
             }
         }
     }
@@ -296,7 +315,7 @@ static void * commande (void * c){
 	char buffer[256];
 	char *answer = malloc (sizeof (*answer) * 256);
 	int longueur;
-    int in_game;
+    pthread_t thread_game;                /* thread du jeu*/
 
     in_game=0;
 
@@ -342,13 +361,15 @@ static void * commande (void * c){
         }
         //lancement du jeu
         else if (strcmp(buffer,"/game")==0){
-            if (in_game=0){
-                game;
+            if (in_game==0){
+                pthread_create(&thread_game, NULL, game, NULL);
                 in_game=1;}
-            else {
-                printf("%d\n", in_game);
-                printf("%s a voulu entre en mode jeu\n", (*client).pseudo);}
         }
+        else if (strcmp(buffer,"/game")==0) {
+            if (in_game==1){
+                //suppression du thread
+                in_game=0;}
+        }          
         //Cas d'un message normale
         else if(longueur > 0){
             envoyer_message(client, buffer);	
@@ -402,7 +423,6 @@ static void * commandeServeur (void * socket_serveur){
 
 
 
-
     /*______________________________________________________________________________________*/
     /*______________________________________________________________________________________*/
     /*--------------------------------------------------------------------------------------*/ 
@@ -434,7 +454,6 @@ main(int argc, char **argv) {
     servent*		ptr_service; 				/* les infos recuperees sur le service de la machine */
     char 			machine[TAILLE_MAX_NOM+1]; 	/* nom de la machine locale */
 
-    pthread_t       thread_game;                /* thread du jeu*/
     pthread_t       thread_cmd;                 /* thread des commandes du serveur */
 
 
