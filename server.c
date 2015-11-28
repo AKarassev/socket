@@ -302,13 +302,13 @@ void supprimerUtilisateur(Client *client_supprime){
     int tmp_nb_client = nb_client;
     for(i; i<tmp_nb_client; i++){
         if(arrClient[i].sock != (*client_supprime).sock){
-            printf("On ajoute %s\n", arrClient[i].pseudo);
+            //printf("On ajoute %s\n", arrClient[i].pseudo);
             copyArray[j] = arrClient[i];
             j++;
         }
         else{
-            printf("On supprime %s\n", arrClient[i].pseudo);
-            //close(arrClient[i].sock);
+            //printf("On supprime %s\n", arrClient[i].pseudo);
+            close(arrClient[i].sock);
             nb_client--;
         }
     }
