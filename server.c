@@ -9,6 +9,8 @@ Serveur à lancer avant le client
 #include <string.h> 		/* pour bcopy, ... */  
 #include <pthread.h> 
 #include <stdlib.h>         /*pour le random*/
+#include <unistd.h>
+
 
 #define TAILLE_MAX_NOM      256
 #define NB_CLIENTS_MAX      42
@@ -66,10 +68,16 @@ void envoyer_message(Client * client, char buffer[]){
     int i;
     for (i=0;i<nb_client;i++){
         if(strcmp((*client).pseudo,arrClient[i].pseudo)!=0){
-            write(arrClient[i].sock,answer,strlen(answer)+1); 
+            if((write(arrClient[i].sock,answer,strlen(answer)+1)) < 0){
+                perror("erreur : impossible d'ecrire le message destine au serveur.");
+                exit(1);
+            } 
         }     
     }    
 }
+
+
+
 
 //Envoie un message à tous les clients du serveur de la part du serveur
 void message_serv(char buffer[]){
@@ -81,6 +89,9 @@ void message_serv(char buffer[]){
             write(arrClient[i].sock,answer,strlen(answer)+1); 
     }    
 }
+
+
+
 
 //Change la couleur d'une chaîne de caractere
 void coloriser(char* answer, char choix){
@@ -131,6 +142,8 @@ void coloriser(char* answer, char choix){
 }
 
 
+
+
 static void * game (void * c){
     Client * client = (Client *) c;
     quest_rep questionnaire[10];
@@ -138,7 +151,7 @@ static void * game (void * c){
     int random;
     char * rep; 
     //Faire l'affichage réponse : /a:réponse
-    message_serv("Pour répondre fairte /a:laréponse");
+    message_serv("Pour répondre entrez /a:[reponse]");
     random=rand()%(10-0) +0;
     strcpy(Question.question,"2+3");
     strcpy(Question.reponse,"5");
@@ -197,7 +210,6 @@ static void * game (void * c){
             }
         }
     }
-    return;
 }
 
 //Liste tous les clients connectés dans une chaîne de caractère
@@ -206,7 +218,7 @@ char* listeClient(){
     strcpy(res,"Liste des clients connectés:");
     int i = 0;
     for(i; i<nb_client; i++){
-        strcat(res, "\n-");
+        strcat(res, "\n - ");
         strcat(res, arrClient[i].pseudo);
     }
 
@@ -234,29 +246,36 @@ char* listeClient(){
 
 
 //Vérifie le statut de la connection des clients connectés
-void checkSocketStatus(){
+char* checkSocketStatus(){
     int error = 0;
     socklen_t len = sizeof (error);
     int retval;
+    char* str = malloc(nb_client*256*sizeof(char));
+    char* tmp = malloc(256*sizeof(char));
+    strcpy(str, "Analyse de l'état des connexions\n\n");
 
     int i = 0;
     for(i; i<nb_client; i++){
-        printf("\nUtilisateur %i\n", i);
-        printf("Pseudo: %s\n", arrClient[i].pseudo);
+        sprintf( tmp, "\nUtilisateur n°%i\n", i);
+        strcat(str, tmp);
+        sprintf(tmp, "Pseudo: %s\n", arrClient[i].pseudo);
+        strcat(str, tmp);
         retval = getsockopt (arrClient[i].sock, SOL_SOCKET, SO_ERROR, &error, &len);
         if (retval != 0) {
         /* there was a problem getting the error code */
-            fprintf(stderr, "error getting socket error code: %s\n", strerror(retval));
-            return;
+            fprintf(stderr, "Erreur sur le code erreur du socket: %s\n", strerror(retval));
         }
         if (error != 0) {
             /* socket has a non zero error status */
-            fprintf(stderr, "socket error: %s\n\n", strerror(error));
+            sprintf(tmp, "Erreur de socket: %s\n\n", strerror(error));
+            strcat(str, tmp);
         }
         else{
-            printf("La connection est OK.\n\n");
+            sprintf(tmp, "La connection est OK.\n\n");
+            strcat(str, tmp);
         }       
     }
+    return str;
 }
 
 
@@ -275,6 +294,8 @@ void listerInfo(){
 
 
 //Supprime un clients= de la liste des clients connectés
+/*BUG : après supression, l'utilisateur suivant peut toujours recevoir les messages,
+        mais ne peut plus en émettre. On perd églament la main sur le serveur*/
 void supprimerUtilisateur(Client *client_supprime){
     Client copyArray[NB_CLIENTS_MAX];
     int i,j = 0;
@@ -287,7 +308,7 @@ void supprimerUtilisateur(Client *client_supprime){
         }
         else{
             printf("On supprime %s\n", arrClient[i].pseudo);
-            close(arrClient[i].sock);
+            //close(arrClient[i].sock);
             nb_client--;
         }
     }
@@ -322,6 +343,7 @@ static void * commande (void * c){
     //Si le client n'a pas de pseudo
     while(strlen((*client).pseudo)<=1){
         longueur = read((*client).sock, buffer, sizeof(buffer));
+        sleep(3);
         buffer[longueur]='\0'; 
         strcpy((*client).pseudo, buffer);
         write(1,buffer,longueur);
@@ -348,13 +370,13 @@ static void * commande (void * c){
     	}
     	// Lister les utilisateurs connectés
     	else if(strcmp(buffer,"/l")==0){
-    		printf("%s a entre la commande /l\n", (*client).pseudo);
+    		printf("%s a entré la commande /l\n", (*client).pseudo);
     		strcpy(answer, listeClient());
     		coloriser(answer, 'v');
     		write((*client).sock,answer,strlen(answer)+1); 
     	}
         else if(strcmp(buffer,"/h")==0){
-            printf("%s a entre la commande /h\n", (*client).pseudo);
+            printf("%s a entré la commande /h\n", (*client).pseudo);
             strcpy(answer, "__________________________\n                          \n/q          - Quitter le serveur\n/l          - Lister les utilisateurs connectés\n/game       - Lancer le jeu\n/endgame    - Arrêter le jeur\n/h          - Afficher les commandes\n__________________________\n\n");
             coloriser(answer, 'v');
             write((*client).sock,answer,strlen(answer)+1);  
@@ -365,7 +387,7 @@ static void * commande (void * c){
                 pthread_create(&thread_game, NULL, game, NULL);
                 in_game=1;}
         }
-        else if (strcmp(buffer,"/game")==0) {
+        else if (strcmp(buffer,"/endgame")==0) {
             if (in_game==1){
                 //suppression du thread
                 in_game=0;}
@@ -379,7 +401,6 @@ static void * commande (void * c){
 
     }
 
-    return;
 
 }
 
@@ -388,11 +409,21 @@ static void * commande (void * c){
 
 //Un thread qui surveille les commandes faites sur le serveur
 static void * commandeServeur (void * socket_serveur){
+    int* socket = (int *) socket_serveur;
     char* cmd = malloc(16*sizeof(char));
-    char* mesg = malloc(256*sizeof(*mesg));
+    char* mesg = malloc(2048*sizeof(char));
+    char* help = malloc(1024*sizeof(char));
+    strcpy(help, "__________________________\n");
+    strcat(help, "                          \n");
+    strcat(help, "/q          - Arrêter le serveur\n");
+    strcat(help, "/cs         - Vérifier le statut des connexions\n");
+    strcat(help, "/l          - Lister les informations des cliens\n");
+    strcat(help, "/h          - Lister les commandes\n");
+
     while(1){
         fgets(cmd, sizeof(cmd), stdin);
         cmd[strcspn(cmd, "\n")] = '\0'; //enlève le caractère de saut de ligne 
+
         if(strcmp(cmd,"/q")==0){
             printf("/q entrée\n");
             strcpy(mesg, "Arrêt du serveur, connection interrompue.");
@@ -401,21 +432,29 @@ static void * commandeServeur (void * socket_serveur){
             int i = 0;
 
             for(i; i<nb_client; i++){
-                write(arrClient[i].sock,mesg,strlen(mesg)+1);
+                if((write(arrClient[i].sock,mesg,strlen(mesg)+1)) < 0){
+                        perror("erreur : impossible d'ecrire le message destine au serveur.");
+                        exit(1);
+                }
                 close(arrClient[i].sock); //fermeture du socket du client
             } 
-            close(socket_serveur) ; //fermeture du socket serveur
+            sleep(3);
+            close(*socket) ; //fermeture du socket serveur
             printf("Arrêt du serveur\n");
             exit(0);          
         }
         else if(strcmp(cmd,"/cs")==0){
-            printf("/cs entrée\n");
-            checkSocketStatus();
+            strcpy(mesg, checkSocketStatus());
+            printf("%s\n", mesg);
         }
         else if(strcmp(cmd,"/l")==0){
             strcpy(mesg, listeClient());
             coloriser(mesg, 'j');
             printf("%s\n", mesg);
+        }
+        else if(strcmp(cmd,"/h")==0){
+            coloriser(help, 'j');
+            printf("%s\n", help);
         }
     }
 
@@ -443,7 +482,7 @@ static void * commandeServeur (void * socket_serveur){
     /*--------------------------------------------------------------------------------------*/ 
 
 
-main(int argc, char **argv) {
+int main(int argc, char **argv) {
   
     int             socket_descriptor, 			/* descripteur de socket */
 	               	nouv_socket_descriptor, 	/* [nouveau] descripteur de socket */
@@ -552,7 +591,7 @@ main(int argc, char **argv) {
     /*______________________________________________________________________________________*/
     /*--------------------------------------------------------------------------------------*/ 
 
-    
+    return 0;  
 }
 
     /*______________________________________________________________________________________*/

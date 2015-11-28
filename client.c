@@ -8,6 +8,10 @@ client <adresse-serveur> <message-a-transmettre>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+
+
 
 typedef struct sockaddr 	sockaddr;
 typedef struct sockaddr_in 	sockaddr_in;
@@ -23,14 +27,41 @@ typedef struct servent 		servent;
 //Le client est toujours en écoute des envois du serveur
 static void * ecoute (void * socket_descriptor){
     int longueur;
-    int * socket = (int *) socket_descriptor;
+    int* socket = (int *) socket_descriptor;
     char buffer[256];
     while(1){
-        if((longueur = read(socket, buffer, (int)sizeof(buffer)))<=0)
+        if((longueur = read(*socket, buffer, (int)sizeof(buffer)))<=0)
             exit(1);
         buffer[longueur]='\0';
         printf("%s \n", buffer);
     }
+}
+
+
+char* checkSocketStatus(int socket_descriptor){
+    int error = 0;
+    socklen_t len = sizeof (error);
+    int retval;
+    char* str = malloc(256*sizeof(char));
+    char* tmp = malloc(256*sizeof(char));
+    strcpy(str, "Analyse de l'état de la connexion\n\n");
+
+
+    retval = getsockopt (socket_descriptor, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (retval != 0) {
+    /* there was a problem getting the error code */
+        fprintf(stderr, "Erreur sur le code erreur du socket: %s\n", strerror(retval));
+    }
+    if (error != 0) {
+        /* socket has a non zero error status */
+        sprintf(tmp, "Erreur de socket: %s\n\n", strerror(error));
+        strcat(str, tmp);
+    }
+    else{
+        sprintf(tmp, "La connection est OK.\n\n");
+        strcat(str, tmp);
+    }       
+    return str;
 }
 
 /*________________________________________________________*/
@@ -161,12 +192,12 @@ int main(int argc, char **argv) {
     printf("/l          - Lister les utilisateurs connectés\n");
     printf("/game       - Lancer le jeu\n");
     printf("/endgame    - Arrêter le jeur\n");
-    printf("/h          - Afficher les commandes\n");
+    printf("/h          - Lister les commandes\n");
     printf("__________________________\n\n");
     printf("Bien le bonjour %s !\n", pseudo);
 
     //Le client se met en écoute
-    pthread_create(&thread_ecoute, NULL, ecoute, socket_descriptor);
+    pthread_create(&thread_ecoute, NULL, ecoute, &socket_descriptor);
 
     //Le client peut désormais envoyer des messages au serveur
     //Il pourra quitter en écrivant la commande "/q" 
@@ -177,11 +208,18 @@ int main(int argc, char **argv) {
         //il faut s'en débarrassé pour faire fonctionner strcmp
         mesg[strcspn(mesg, "\n")] = '\0'; //enlève le caractère de saut de ligne 
 
-		//Le client envoie le message
-		if ((write(socket_descriptor, mesg, strlen(mesg))) < 0) {
-			perror("erreur : impossible d'ecrire le message destine au serveur.");
-			exit(1);
-    	}
+        if(strcmp(mesg,"/cs")==0){
+            strcpy(mesg, checkSocketStatus(socket_descriptor));
+            printf("%s\n", mesg);
+        }
+        else{
+            //Le client envoie le message
+            if ((write(socket_descriptor, mesg, strlen(mesg))) < 0) {
+                perror("erreur : impossible d'ecrire le message destine au serveur.");
+                exit(1);
+            }
+        }
+
 	}
 	printf("Vous quittez le chat.\n");
     printf("__________________________________________________\n\n");
