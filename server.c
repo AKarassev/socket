@@ -148,11 +148,16 @@ static void * game (void * c){
     Client * client = (Client *) c;
     quest_rep questionnaire[10];
     quest_rep Question;
+    char buffer[256];
     int random;
+    int longueur;
     char * rep; 
+    char * answer= malloc (sizeof (*answer) * 256);
     //Faire l'affichage réponse : /a:réponse
     message_serv("Pour répondre entrez /a:[reponse]");
     random=rand()%(10-0) +0;
+    printf("%d\n",random);
+    printf("%d\n",nb_client);
     strcpy(Question.question,"2+3");
     strcpy(Question.reponse,"5");
     questionnaire[0]=Question;
@@ -185,20 +190,26 @@ static void * game (void * c){
     questionnaire[9]=Question;
     //Afficher la première question
     message_serv(questionnaire[random].question);
+    printf("%d\n",nb_client);
     while(1){
-        char buffer[256];
-        char *answer = malloc (sizeof (*answer) * 256);
-        int longueur;
-        int in_game=0;
+        printf("game test5\n");
+        printf("%d\n",(*client).sock);
+        printf("%s\n",buffer);
+        printf("%d\n",(int)sizeof(buffer));
         longueur = read((*client).sock, buffer, sizeof(buffer));
+        printf("game test6\n");
 
-        //Permet de vider le buffer des ancinnes données
+        //Permet de vider le buffer des anciennes données
         buffer[longueur]='\0';      // explicit null termination: updated based on comments
-
+        printf("game test7\n");
         sleep(3);
+        printf("game test8\n");
         rep = malloc (256*sizeof(char));
+        printf("game test9\n");
         strcpy(rep,"/a:");
+        printf("game test10\n");
         strcat(rep,questionnaire[random].reponse);
+        printf("game test11\n");
         if(longueur > 0){
             envoyer_message(client, buffer);
             if  (strcmp(buffer,rep)==0){
@@ -385,7 +396,7 @@ static void * commande (void * c){
         //lancement du jeu
         else if (strcmp(buffer,"/game")==0){
             if (in_game==0){
-                pthread_create(&thread_game, NULL, game, NULL);
+                pthread_create(&thread_game, NULL, game, &arrClient[nb_client]);
                 in_game=1;}
         }
         else if (strcmp(buffer,"/endgame")==0) {
