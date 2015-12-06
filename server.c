@@ -221,6 +221,7 @@ char* listeClient(){
         strcat(res, "\n - ");
         strcat(res, arrClient[i].pseudo);
     }
+    printf("\n");
 
     return res;
 }
@@ -427,7 +428,6 @@ static void * commandeServeur (void * socket_serveur){
         if(strcmp(cmd,"/q")==0){
             printf("/q entrée\n");
             strcpy(mesg, "Arrêt du serveur, connection interrompue.");
-            printf("before coloriser %s\n", mesg);
             coloriser(mesg, 'r');
             int i = 0;
 
@@ -444,15 +444,18 @@ static void * commandeServeur (void * socket_serveur){
             exit(0);          
         }
         else if(strcmp(cmd,"/cs")==0){
+            printf("/cs entrée\n");
             strcpy(mesg, checkSocketStatus());
             printf("%s\n", mesg);
         }
         else if(strcmp(cmd,"/l")==0){
+            printf("/l entrée\n");
             strcpy(mesg, listeClient());
             coloriser(mesg, 'j');
             printf("%s\n", mesg);
         }
         else if(strcmp(cmd,"/h")==0){
+            printf("/h entrée\n");
             coloriser(help, 'j');
             printf("%s\n", help);
         }
